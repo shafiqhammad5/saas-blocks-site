@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: saasblocks-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: saasblocks
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - saasblocks-network
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: saasblocks-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - saasblocks-network
+
+  # Next.js Application (for production)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: saasblocks-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/saasblocks
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your-secret-key-here
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - saasblocks-network
+    # Uncomment the following lines for development with volume mounting
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
+    #   - /app/.next
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  saasblocks-network:
+    driver: bridge
